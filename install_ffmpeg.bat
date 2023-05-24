@@ -1,48 +1,51 @@
 @echo off
 setlocal
 
-REM Check if curl is installed
-where curl >nul 2>nul
-if %errorlevel% neq 0 (
-    echo Installing curl...
-    REM Download the curl binary and install it
-    curl -o curl.zip https://curl.se/windows/dl-7.80.0/curl-7.80.0-win64-mingw.zip
-    7z x curl.zip -ocurl
-    set PATH=%PATH%;%cd%\curl\curl-7.80.0-win64-mingw\bin
-    echo curl has been installed.
+REM Define variables
+set "FFMPEG_URL=https://www.gyan.dev/ffmpeg/builds/packages/ffmpeg-2023-05-22-git-877ccaf776-full_build.7z"
+set "FFMPEG_ARCHIVE=%CD%\dependencies\ffmpeg-git-full.7z"
+set "SEVEN_ZIP_URL=https://www.7-zip.org/a/7z1900-extra.7z"
+set "SEVEN_ZIP_ARCHIVE=%CD%\7z.zip"
+set "SEVEN_ZIP_EXE=%CD%\7z\x64\7za.exe"
+set "SEVEN_ZER_URL=https://www.7-zip.org/a/7zr.exe"
+set "SEVEN_ZER_EXE=%CD%\7zr.exe"
+
+if exist %SEVEN_ZER_EXE% (
+echo skipping 7zr
+) else (
+echo downloading 7zr
+powershell Invoke-WebRequest -Uri %SEVEN_ZER_URL% -OutFile %SEVEN_ZER_EXE%
 )
 
-REM Check if 7z is installed
-where 7z >nul 2>nul
-if %errorlevel% neq 0 (
-    echo Installing 7z...
-    REM Download the 7z binary and install it
-    curl -o 7z.zip https://www.7-zip.org/a/7z1900-extra.7z
-    7z x 7z.zip -o7z
-    set PATH=%PATH%;%cd%\7z
-    echo 7z has been installed.
+if exist %SEVEN_ZIP_EXE% (
+echo skipping 7za
+) else (
+echo Downloading 7za
+powershell Invoke-WebRequest -Uri %SEVEN_ZIP_URL% -OutFile %SEVEN_ZIP_ARCHIVE%
 )
 
-REM Specify the download URL and destination file path
-set "ffmpegUrl=https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-full.7z"
-set "ffmpegDestination=%~dp0dependencies\ffmpeg-git-full.7z"
+%SEVEN_ZER_EXE% x "%SEVEN_ZIP_ARCHIVE%" -o"%CD%\7z"
 
 REM Create the dependencies directory if it doesn't exist
-if not exist "%~dp0dependencies" mkdir "%~dp0dependencies"
+if not exist "%CD%\dependencies" mkdir "%CD%\dependencies"
 
-REM Download FFmpeg
+REM Download FFmpeg using curl
+if exist %FFMPEG_ARCHIVE% (
+echo skipping ffmpeg
+) else (
 echo Downloading FFmpeg...
-curl -o "%ffmpegDestination%" "%ffmpegUrl%"
+powershell Invoke-WebRequest -Uri %FFMPEG_URL% -OutFile %FFMPEG_ARCHIVE%
+)
 
 REM Check if the download was successful
-if not exist "%ffmpegDestination%" (
+if not exist "%FFMPEG_ARCHIVE%" (
     echo Failed to download FFmpeg.
     exit /b 1
 )
 
 REM Extract FFmpeg
 echo Extracting FFmpeg...
-7z x "%ffmpegDestination%" -o"%~dp0dependencies"
+%SEVEN_ZIP_EXE% x "%FFMPEG_ARCHIVE%" -o"%CD%\dependencies"
 
 REM Check if the extraction was successful
 if errorlevel 1 (
@@ -55,8 +58,7 @@ echo FFmpeg has been downloaded and extracted successfully.
 REM Check if the dependencies folder is already in the PATH
 echo Checking if dependencies folder is in the PATH...
 set "existingPath=%PATH%"
-set "dependenciesPath=%~dp0dependencies"
-set "dependenciesPath=%dependenciesPath:\=\\%"
+set "dependenciesPath=C:\ffmpeg\ffmpeg-2023-05-22-git-877ccaf776-full_build\bin"
 echo %existingPath% | findstr /i /c:"%dependenciesPath%" >nul 2>nul
 if %errorlevel% equ 0 (
     echo Dependencies folder is already in the PATH.
